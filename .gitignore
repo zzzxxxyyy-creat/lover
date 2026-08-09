@@ -1,0 +1,8 @@
+*.py
+__pycache__/
+compressed_photos/
+photo1.jpg
+photo2.jpg
+photo3.jpg
+nfc-photo.html
+.workbuddy/
