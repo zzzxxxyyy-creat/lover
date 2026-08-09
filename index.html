@@ -781,7 +781,7 @@
       <button class="num-key empty"></button><button class="num-key" data-n="0">0</button><button class="num-key del" data-n="del">⌫</button>
     </div>
     <div class="lock-error" id="lockError"></div>
-    <div class="lock-version">v2.5 · 长按♥重置密码</div>
+    <div class="lock-version">v2.6 · 长按♥重置密码</div>
     <div class="lock-debug" id="lockDebug"></div>
   </div>
 
@@ -1063,6 +1063,12 @@
       '又是想你的一天呢', '今天也要开开心心的哦', '你在身边，就是最好的今天',
     ];
 
+    // 内置语音（永久存储在仓库中，不依赖 localStorage）
+    const DEFAULT_VOICES = [
+      { name: '晚安老婆', file: 'voice_01.mp3', builtIn: true },
+      { name: '我想你了', file: 'voice_02.mp3', builtIn: true },
+    ];
+
     const DEFAULT_MEMORIES = [
       { title: '第一次见面', desc: '那天你笑起来特别好看', photos: ['gf_02.jpg', 'gf_03.jpg'] },
       { title: '第一次牵手', desc: '心跳加速的瞬间', photos: ['gf_07.jpg'] },
@@ -1092,6 +1098,11 @@
       getMemories: () => { try { return JSON.parse(localStorage.getItem('memories')) || null; } catch { return null; } },
       setMemories: (arr) => localStorage.setItem('memories', JSON.stringify(arr)),
     };
+
+    // 合并内置语音 + 用户上传语音
+    function getAllVoices() {
+      return [...DEFAULT_VOICES, ...STORE.getVoiceList()];
+    }
 
     // 初始化 PIN
     PIN = STORE.getPin();
@@ -1137,7 +1148,7 @@
       }
 
       // 语音提示
-      const voiceList = STORE.getVoiceList();
+      const voiceList = getAllVoices();
       if (voiceList.length > 0) {
         setTimeout(() => {
           document.getElementById('voiceBtn').style.display = 'flex';
@@ -2005,7 +2016,7 @@
     }
 
     function initVoiceButton() {
-      const list = STORE.getVoiceList();
+      const list = getAllVoices();
       const btn = document.getElementById('voiceBtn');
       if (list.length > 0) btn.style.display = 'flex';
     }
@@ -2014,7 +2025,7 @@
     function toggleVoiceList() {
       const overlay = document.getElementById('voiceListOverlay');
       if (overlay.classList.contains('show')) { closeVoiceList(); return; }
-      const list = STORE.getVoiceList();
+      const list = getAllVoices();
       if (list.length === 0) { showToast('还没有语音，去管理面板添加吧～', 3000); return; }
       renderVoiceListItems();
       overlay.classList.add('show');
@@ -2029,16 +2040,17 @@
 
     function renderVoiceListItems() {
       const container = document.getElementById('voiceListItems');
-      const list = STORE.getVoiceList();
+      const list = getAllVoices();
       container.innerHTML = '';
+      const icons = ['🌙', '❤️', '🎵', '💝', '🎧', '🎶', '✨', '💗'];
       list.forEach((v, idx) => {
         const item = document.createElement('div');
         item.className = 'voice-item';
         item.setAttribute('data-voice-idx', idx);
         item.innerHTML = `
-          <div class="voice-item-icon">${idx === 0 ? '💤' : idx === 1 ? '❤️' : '🎵'}</div>
+          <div class="voice-item-icon">${icons[idx] || '🎵'}</div>
           <div class="voice-item-info">
-            <div class="voice-item-name">${v.name || '语音' + (idx + 1)}</div>
+            <div class="voice-item-name">${v.name || '语音' + (idx + 1)}${v.builtIn ? ' <small>内置</small>' : ''}</div>
           </div>`;
         item.addEventListener('click', (e) => playVoiceInList(idx, e));
         container.appendChild(item);
@@ -2046,7 +2058,7 @@
     }
 
     function playVoiceInList(idx, event) {
-      const list = STORE.getVoiceList();
+      const list = getAllVoices();
       if (!list[idx]) return;
 
       // 如果正在播同一条 → 暂停
@@ -2062,15 +2074,20 @@
 
       const v = list[idx];
       let url;
-      try {
-        if (voiceBlobUrls[idx]) {
-          url = voiceBlobUrls[idx];
-        } else {
-          url = voiceToBlobUrl(v.data);
-          voiceBlobUrls[idx] = url;
+      if (v.file) {
+        // 内置语音文件，直接使用路径
+        url = v.file;
+      } else {
+        try {
+          if (voiceBlobUrls[idx]) {
+            url = voiceBlobUrls[idx];
+          } else {
+            url = voiceToBlobUrl(v.data);
+            voiceBlobUrls[idx] = url;
+          }
+        } catch (e) {
+          url = v.data;
         }
-      } catch (e) {
-        url = v.data;
       }
 
       voiceAudio = new Audio();
@@ -2115,9 +2132,24 @@
     // ====== 管理面板语音 ======
     function renderAdminVoiceList() {
       const container = document.getElementById('adminVoiceList');
-      const list = STORE.getVoiceList();
       container.innerHTML = '';
+
+      // 内置语音（只读展示）
+      DEFAULT_VOICES.forEach((v, idx) => {
+        const item = document.createElement('div');
+        item.className = 'admin-voice-item';
+        item.style.opacity = '0.7';
+        item.innerHTML = `
+          <input type="text" value="${v.name}" disabled style="background:#f5f5f5;color:#999;">
+          <button class="admin-voice-test" onclick="toggleAdminVoicePreview(${idx}, this, true)" title="试听">▶</button>
+          <span style="font-size:11px;color:#bbb;width:30px;text-align:center;">内置</span>`;
+        container.appendChild(item);
+      });
+
+      // 用户上传语音
+      const list = STORE.getVoiceList();
       list.forEach((v, idx) => {
+        const realIdx = idx; // localStorage 索引
         let demoUrl;
         try {
           if (!voiceBlobUrls[idx]) voiceBlobUrls[idx] = voiceToBlobUrl(v.data);
@@ -2128,13 +2160,13 @@
         item.className = 'admin-voice-item';
         item.innerHTML = `
           <input type="text" value="${v.name || '语音' + (idx + 1)}" placeholder="语音名称" data-idx="${idx}" maxlength="12">
-          <button class="admin-voice-test" onclick="toggleAdminVoicePreview(${idx}, this)" title="试听">▶</button>
+          <button class="admin-voice-test" onclick="toggleAdminVoicePreview(${idx}, this, false)" title="试听">▶</button>
           <button class="admin-voice-del" onclick="delAdminVoice(${idx})">×</button>`;
         container.appendChild(item);
       });
 
       // 绑定名称修改事件
-      container.querySelectorAll('input[type="text"]').forEach(input => {
+      container.querySelectorAll('input[type="text"]:not([disabled])').forEach(input => {
         input.addEventListener('change', function() {
           const idx = parseInt(this.dataset.idx);
           const list = STORE.getVoiceList();
@@ -2144,8 +2176,8 @@
     }
 
     let adminPreviewAudio = null;
-    function toggleAdminVoicePreview(idx, btn) {
-      if (adminPreviewAudio && !adminPreviewAudio.paused && adminPreviewAudio.dataset.adminIdx === String(idx)) {
+    function toggleAdminVoicePreview(idx, btn, isBuiltIn) {
+      if (adminPreviewAudio && !adminPreviewAudio.paused && adminPreviewAudio.dataset.adminIdx === String(idx) + (isBuiltIn ? '_b' : '')) {
         adminPreviewAudio.pause();
         btn.textContent = '▶';
         return;
@@ -2154,12 +2186,17 @@
       // 重置所有按钮
       document.querySelectorAll('.admin-voice-test').forEach(b => b.textContent = '▶');
 
-      const list = STORE.getVoiceList();
-      if (!list[idx]) return;
       let url;
-      try { url = voiceToBlobUrl(list[idx].data); } catch(e) { url = list[idx].data; }
+      if (isBuiltIn) {
+        // 内置语音
+        url = DEFAULT_VOICES[idx].file;
+      } else {
+        const list = STORE.getVoiceList();
+        if (!list[idx]) return;
+        try { url = voiceToBlobUrl(list[idx].data); } catch(e) { url = list[idx].data; }
+      }
       adminPreviewAudio = new Audio(url);
-      adminPreviewAudio.dataset.adminIdx = String(idx);
+      adminPreviewAudio.dataset.adminIdx = String(idx) + (isBuiltIn ? '_b' : '');
       adminPreviewAudio.onended = () => { btn.textContent = '▶'; };
       adminPreviewAudio.onerror = () => { btn.textContent = '▶'; showToast('播放失败', 3000); };
       adminPreviewAudio.play().then(() => { btn.textContent = '⏸'; }).catch(() => { btn.textContent = '▶'; });
@@ -2176,7 +2213,7 @@
       voiceBlobUrls = newUrls;
       STORE.setVoiceList(list);
       renderAdminVoiceList();
-      if (list.length === 0) document.getElementById('voiceBtn').style.display = 'none';
+      if (getAllVoices().length === 0) document.getElementById('voiceBtn').style.display = 'none';
       showToast('已删除 ✓');
     }
 
@@ -2185,7 +2222,7 @@
       const file = this.files[0];
       if (!file) return;
       const list = STORE.getVoiceList();
-      if (list.length >= 6) { showToast('最多 6 条语音，请先删除再添加', 3000); return; }
+      if (list.length + DEFAULT_VOICES.length >= 8) { showToast('语音数量已满，请先删除再添加', 3000); return; }
       if (file.size > 2 * 1024 * 1024) { showToast('文件太大，请选 2MB 以内的录音', 3000); return; }
       const name = file.name.toLowerCase();
       const unsupported = ['.amr', '.opus', '.3gp', '.wma'];
