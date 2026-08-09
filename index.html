@@ -781,7 +781,7 @@
       <button class="num-key empty"></button><button class="num-key" data-n="0">0</button><button class="num-key del" data-n="del">⌫</button>
     </div>
     <div class="lock-error" id="lockError"></div>
-    <div class="lock-version">v2.7 · 长按♥重置密码</div>
+    <div class="lock-version">v2.8 · 长按♥重置密码</div>
     <div class="lock-debug" id="lockDebug"></div>
   </div>
 
@@ -1092,10 +1092,31 @@
     ];
 
     const DEFAULT_MEMORIES = [
-      { title: '第一次见面', desc: '那天你笑起来特别好看', photos: ['gf_02.jpg', 'gf_03.jpg'] },
-      { title: '第一次牵手', desc: '心跳加速的瞬间', photos: ['gf_07.jpg'] },
-      { title: '第一次约会', desc: '一起吃了火锅，聊到很晚', photos: ['gf_12.jpg', 'gf_14.jpg', 'gf_16.jpg'] },
+      { title: '第一次给我发照片(26.4.14)', desc: '是你实习的博物院', photos: ['gf_45.jpg'] },
+      { title: '第一次给我展示ootd', desc: '很符合我的审美', photos: ['gf_44.jpg'] },
+      { title: '很多年来的第一次见面', desc: '白色的裙子 精致的妆容 很漂亮呦', photos: ['gf_01.jpg', 'gf_02.jpg', 'gf_03.jpg'] },
+      { title: '见面......', desc: '接下来就是很多次的的见面', photos: ['gf_16.jpg', 'gf_26.jpg', 'gf_61.jpg'] },
+      { title: '见面ing', desc: '持续不断的见面 还有好多我没有就录下来', photos: ['gf_28.jpg', 'gf_29.jpg', 'gf_62.jpg'] },
+      { title: '去玉泉山', desc: '山上空空的 来我学校练教资', photos: ['gf_11.jpg', 'gf_05.jpg', 'gf_10.jpg'] },
+      { title: '第一次吃火锅 牵手 看电影26.5.3', desc: '我约你看电影 看电影时你拉我的手', photos: ['gf_22.jpg', 'gf_07.jpg', 'gf_08.jpg'] },
+      { title: '第一次和你说要在一起(26.5.14)', desc: '去了小酒馆 你闷闷的 我口头上和你说在一起', photos: ['gf_17.jpg', 'gf_18.jpg'] },
+      { title: '你去考教资5.17', desc: '我就说你一定行 那天雨下的很大', photos: ['gf_43.jpg', 'gf_39.jpg'] },
+      { title: '第一次收到小猪5.21', desc: '小猪小猪胖乎乎 抱在怀里软乎乎', photos: ['gf_20.jpg', 'gf_21.jpg'] },
+      { title: '和你的第一次表白', desc: '超级紧张 害怕你不喜欢我送的花', photos: ['gf_49.jpg', 'gf_50.jpg'] },
+      { title: '第一次送我球鞋 5.26', desc: '一整个震惊 居然是哈登 都忍不住给我了', photos: ['gf_35.jpg', 'gf_36.jpg', 'gf_56.jpg'] },
+      { title: '我们那段时间分开最长的时间', desc: '5.27-6.1号 整整五天没见面 但你依旧报备', photos: [] },
+      { title: '见面', desc: '', photos: ['gf_13.jpg', 'gf_14.jpg', 'gf_12.jpg'] },
+      { title: '和你闺蜜', desc: '可爱捏', photos: ['gf_52.jpg', 'gf_51.jpg', 'gf_57.jpg'] },
+      { title: '见面', desc: '', photos: ['gf_55.jpg', 'gf_60.jpg', 'gf_15.jpg'] },
+      { title: '第一次去你学校', desc: '竟然有跨成费 气死我了', photos: ['gf_42.jpg', 'gf_40.jpg'] },
+      { title: '见面', desc: '那段时间和你疯狂吃鸡', photos: ['gf_53.jpg', 'gf_54.jpg', 'gf_55.jpg'] },
+      { title: '见面', desc: '琐碎的见面照片', photos: ['gf_19.jpg', 'gf_41.jpg', 'gf_37.jpg'] },
+      { title: '第二次去学校找你', desc: '你说两人一起淋雨很浪漫', photos: ['gf_30.jpg', 'gf_31.jpg'] },
+      { title: '第一次去游乐场', desc: '好玩儿 因为有你在', photos: ['gf_38.jpg'] },
+      { title: '第一次做情侣装', desc: '你说的要去做情侣装', photos: ['gf_34.jpg', 'gf_32.jpg', 'gf_30.jpg'] },
+      { title: '第一次收到花', desc: '爱你呦', photos: ['gf_63.jpg', 'gf_64.jpg'] },
     ];
+    const MEMORIES_VERSION = 2;
 
     // ========================
     // localStorage 工具
@@ -1697,7 +1718,8 @@
     // ========================
     function getMemories() {
       const stored = STORE.getMemories();
-      if (stored && stored.length > 0) return stored;
+      const storedVer = parseInt(localStorage.getItem('mem_ver')) || 0;
+      if (stored && stored.length > 0 && storedVer === MEMORIES_VERSION) return stored;
       return DEFAULT_MEMORIES.map(m => ({ ...m, photos: (m.photos || []).map(p => typeof p === 'string' ? { src: p, type: 'url' } : p) }));
     }
 
@@ -2765,6 +2787,7 @@
       const cleanedMemories = adminMemories.filter(m => m.title.trim() || m.desc.trim() || m.photos.length > 0);
       try {
         STORE.setMemories(cleanedMemories);
+        localStorage.setItem('mem_ver', MEMORIES_VERSION);
       } catch(e) {
         showToast('存储空间不足，请减少照片数量', 3000);
         return;
