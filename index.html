@@ -781,7 +781,7 @@
       <button class="num-key empty"></button><button class="num-key" data-n="0">0</button><button class="num-key del" data-n="del">⌫</button>
     </div>
     <div class="lock-error" id="lockError"></div>
-    <div class="lock-version">v2.6 · 长按♥重置密码</div>
+    <div class="lock-version">v2.7 · 长按♥重置密码</div>
     <div class="lock-debug" id="lockDebug"></div>
   </div>
 
@@ -954,6 +954,10 @@
         <div class="admin-memory-list" id="adminMemoryList"></div>
         <button class="admin-add-btn" onclick="addAdminMemory()">+ 添加一条回忆</button>
         <div class="admin-hint" style="margin-top:10px;">编辑标题和描述 · 点格子选照片（照片库或相册）· 每条最多3张</div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="admin-btn" onclick="exportMemories()" style="flex:1;">📤 导出回忆数据</button>
+          <button class="admin-btn" onclick="showImportBox()" style="flex:1;">📥 导入回忆数据</button>
+        </div>
       </div>
 
       <!-- 基本信息 Tab -->
@@ -1030,6 +1034,24 @@
         <button class="photo-picker-mode-btn" id="pickerModeUpload" onclick="switchPickerMode('upload')">📷 从相册</button>
       </div>
       <div class="photo-picker-body" id="photoPickerBody"></div>
+    </div>
+  </div>
+
+  <!-- 回忆导出/导入弹窗 -->
+  <div class="photo-picker-overlay" id="memoryDataOverlay" style="z-index:460;" onclick="if(event.target===this)closeMemoryDataBox()">
+    <div class="photo-picker-box" style="max-width:420px;">
+      <div class="photo-picker-header">
+        <span class="photo-picker-title" id="memoryDataTitle">导出回忆数据</span>
+        <button class="photo-picker-close" onclick="closeMemoryDataBox()">×</button>
+      </div>
+      <div style="padding:12px 16px;">
+        <textarea id="memoryDataText" style="width:100%;height:240px;font-size:11px;border:1px solid #e8c4d4;border-radius:8px;padding:8px;resize:vertical;font-family:monospace;" placeholder="回忆数据将显示在这里..."></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="admin-btn admin-btn-primary" id="memoryDataActionBtn" onclick="copyMemoryData()" style="flex:1;">📋 复制数据</button>
+          <button class="admin-btn" onclick="closeMemoryDataBox()" style="flex:1;">关闭</button>
+        </div>
+        <div class="admin-hint" id="memoryDataHint" style="margin-top:8px;text-align:left;">复制以上文字发给我，我会帮你写进代码永久保存</div>
+      </div>
     </div>
   </div>
 
@@ -2659,6 +2681,67 @@
       if (adminMemories[mi] && adminMemories[mi].photos[pi]) {
         adminMemories[mi].photos.splice(pi, 1);
         renderAdminMemories();
+      }
+    }
+
+    // --- 导出/导入回忆 ---
+    function exportMemories() {
+      const data = JSON.stringify(adminMemories, null, 2);
+      document.getElementById('memoryDataTitle').textContent = '导出回忆数据';
+      document.getElementById('memoryDataText').value = data;
+      document.getElementById('memoryDataText').readOnly = true;
+      document.getElementById('memoryDataActionBtn').textContent = '📋 复制数据';
+      document.getElementById('memoryDataActionBtn').onclick = copyMemoryData;
+      document.getElementById('memoryDataHint').textContent = '复制以上文字发给我，我会帮你写进代码永久保存';
+      document.getElementById('memoryDataHint').style.display = '';
+      document.getElementById('memoryDataOverlay').classList.add('show');
+    }
+
+    function showImportBox() {
+      document.getElementById('memoryDataTitle').textContent = '导入回忆数据';
+      document.getElementById('memoryDataText').value = '';
+      document.getElementById('memoryDataText').readOnly = false;
+      document.getElementById('memoryDataText').placeholder = '把导出的回忆数据粘贴到这里...';
+      document.getElementById('memoryDataActionBtn').textContent = '✅ 导入';
+      document.getElementById('memoryDataActionBtn').onclick = doImportMemories;
+      document.getElementById('memoryDataHint').textContent = '粘贴数据后点「导入」，会替换当前所有回忆';
+      document.getElementById('memoryDataHint').style.display = '';
+      document.getElementById('memoryDataOverlay').classList.add('show');
+    }
+
+    function closeMemoryDataBox() {
+      document.getElementById('memoryDataOverlay').classList.remove('show');
+    }
+
+    function copyMemoryData() {
+      const text = document.getElementById('memoryDataText').value;
+      if (!text) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('已复制 ✓')).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.getElementById('memoryDataText');
+      ta.select();
+      try { document.execCommand('copy'); showToast('已复制 ✓'); }
+      catch(e) { showToast('复制失败，请手动选择复制', 3000); }
+    }
+
+    function doImportMemories() {
+      const text = document.getElementById('memoryDataText').value.trim();
+      if (!text) { showToast('请先粘贴数据', 3000); return; }
+      try {
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) throw new Error('not array');
+        adminMemories = data;
+        renderAdminMemories();
+        closeMemoryDataBox();
+        showToast('导入成功！记得点「保存」生效', 3000);
+      } catch(e) {
+        showToast('数据格式错误，请检查', 3000);
       }
     }
 

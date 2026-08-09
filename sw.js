@@ -1,4 +1,4 @@
-const CACHE = 'our-story-v20';
+const CACHE = 'our-story-v21';
 const ASSETS = ['/', '/index.html', '/manifest.json', '/voice_01.mp3', '/voice_02.mp3'];
 
 self.addEventListener('install', e => {
